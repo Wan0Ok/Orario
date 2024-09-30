@@ -205,7 +205,6 @@
             background-color: #2980b9;
         }
 
-        /* New styles for search and color palette */
         #search-container {
             margin-bottom: 20px;
             text-align: center;
@@ -239,16 +238,29 @@
             border-color: #000;
         }
 
-        /* Responsive Design */
-        @media (min-width: 768px) {
-            .container {
-                flex-direction: row;
-            }
+        #current-future-classes {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
 
-            #draggables {
-                width: 300px;
-                flex-direction: column;
-            }
+        .class-info {
+            flex: 1;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .class-info h2 {
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        .class-info div {
+            font-size: 1em;
         }
 
         @media (max-width: 767px) {
@@ -256,8 +268,56 @@
                 padding: 10px;
             }
 
-            .draggable-section {
+            #timetable-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
                 min-width: 100%;
+            }
+
+            th, td {
+                padding: 6px;
+                font-size: 0.8em;
+            }
+
+            td:first-child {
+                font-size: 0.7em;
+                padding: 4px;
+                width: 40px;
+                min-width: 40px;
+            }
+
+            .timeslot {
+                height: 50px;
+            }
+
+            .interval {
+                height: 25px;
+            }
+
+            #draggables {
+                flex-direction: column;
+            }
+
+            .draggable-section {
+                max-width: 100%;
+            }
+
+            .subject, .classroom {
+                display: inline-block;
+                margin: 2px;
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+
+            #current-future-classes {
+                flex-direction: column;
+            }
+
+            .class-info {
+                margin-bottom: 10px;
             }
 
             #controls {
@@ -269,108 +329,7 @@
                 width: 100%;
                 max-width: 300px;
             }
-
-            td:first-child {
-                font-size: 0.7em;
-                padding: 6px;
-            }
         }
-        @media (max-width: 767px) {
-    body {
-        padding: 10px;
-    }
-
-    .draggable-section {
-        min-width: 100%;
-    }
-
-    #controls {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    button {
-        width: 100%;
-        max-width: 300px;
-    }
-
-    /* Improved styles for the hour column on mobile */
-    td:first-child {
-        font-size: 0.65em;
-        padding: 4px;
-        width: 40px; /* Set a fixed width for the hour column */
-        min-width: 40px;
-    }
-
-    #timetable-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-    }
-
-    table {
-        min-width: 500px; /* Reduce minimum width for better mobile viewing */
-    }
-
-    th, td {
-        padding: 8px; /* Reduce padding for all cells */
-    }
-
-    .timeslot {
-        height: 60px; /* Reduce height of timeslots */
-    }
-
-    .interval {
-        height: 30px; /* Reduce height of interval rows */
-    }
-
-    .timeslot-subject {
-        font-size: 0.9em; /* Slightly reduce font size for subjects */
-    }
-
-    .timeslot-classroom {
-        font-size: 0.7em; /* Further reduce font size for classrooms */
-    }
-}
-
-        #current-class-container {
-                    background-color: var(--primary-color);
-                    color: white;
-                    padding: 20px;
-                    border-radius: 8px;
-                    margin-bottom: 20px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    text-align: center;
-                }
-        
-                #current-class-container h2 {
-                    margin-bottom: 10px;
-                    font-size: 1.5em;
-                }
-        
-                #current-class {
-                    font-size: 2em;
-                    font-weight: bold;
-                }
-        
-                #current-time {
-                    font-size: 1.2em;
-                    margin-top: 10px;
-                }
-        
-                /* Responsive adjustments */
-                @media (max-width: 767px) {
-                    #current-class-container {
-                        padding: 15px;
-                    }
-        
-                    #current-class {
-                        font-size: 1.5em;
-                    }
-        
-                    #current-time {
-                        font-size: 1em;
-                    }
-                }
 
         /* Subject Colors - Default Palette */
         .informatica { background-color: #C65D34; color: white; }
@@ -415,10 +374,17 @@
 <body>
     <h1>Tao's - Timetable</h1>
     
-    <div id="current-class-container"></div>
-    <h2>Current Class</h2>
-    <div id="current-class">Loading...</div>
-    <div id="current-time"></div>
+    <div id="current-future-classes">
+        <div id="current-class-container" class="class-info">
+            <h2>Current Class</h2>
+            <div id="current-class">Loading...</div>
+            <div id="current-time"></div>
+        </div>
+        <div id="future-class-container" class="class-info">
+            <h2>Future Class</h2>
+            <div id="future-class">Loading...</div>
+            <div id="future-time"></div>
+        </div>
     </div>
 
     <div id="search-container">
@@ -758,6 +724,144 @@
         // Update current class every minute
         setInterval(updateCurrentClass, 60000);
         updateCurrentClass();
+        function setupMobileDraggable(element) {
+    element.addEventListener('touchstart', handleTouchStart, false);
+    element.addEventListener('touchmove', handleTouchMove, false);
+    element.addEventListener('touchend', handleTouchEnd, false);
+}
+
+let draggedElement = null;
+
+function handleTouchStart(e) {
+    draggedElement = this;
+    e.preventDefault();
+}
+
+function handleTouchMove(e) {
+    e.preventDefault();
+}
+
+function handleTouchEnd(e) {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    
+    if (target && target.classList.contains('timeslot')) {
+        const contentDiv = target.querySelector('.timeslot-content');
+        const subjectDiv = contentDiv.querySelector('.timeslot-subject');
+        const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
+
+        if (draggedElement.classList.contains('subject')) {
+            const subject = subjects.find(s => s.id === draggedElement.id);
+            if (subject) {
+                subjectDiv.textContent = subject.name;
+                target.className = 'timeslot ' + subject.color;
+            }
+        } else if (draggedElement.classList.contains('classroom')) {
+            classroomDiv.textContent = draggedElement.id;
+        }
+
+        saveTimetable();
+    }
+
+    draggedElement = null;
+}
+
+// Update createDraggables function to add mobile support
+function createDraggables(items, containerId, itemClass) {
+    const container = document.getElementById(containerId);
+    items.forEach(item => {
+        const element = document.createElement('div');
+        element.textContent = typeof item === 'object' ? item.name : item;
+        element.classList.add(itemClass, typeof item === 'object' ? item.color : 'classroom');
+        element.setAttribute('draggable', 'true');
+        element.id = typeof item === 'object' ? item.id : item;
+        setupDraggable(element);
+        setupMobileDraggable(element);
+        container.appendChild(element);
+    });
+}
+
+// Update the getCurrentClass and add getFutureClass functions
+function getCurrentClass(day, hours, minutes) {
+    return getClassAtTime(day, hours, minutes);
+}
+
+function getFutureClass(day, hours, minutes) {
+    // Add one hour to the current time
+    minutes += 60;
+    if (minutes >= 60) {
+        hours += 1;
+        minutes -= 60;
+    }
+    if (hours >= 24) {
+        day += 1;
+        hours -= 24;
+    }
+    if (day > 5) day = 1; // Wrap to Monday if it's weekend
+
+    return getClassAtTime(day, hours, minutes);
+}
+
+function getClassAtTime(day, hours, minutes) {
+    // This is a simplified example. You'll need to adjust this based on your actual schedule.
+    const schedule = {
+        1: [ // Monday
+            { start: '08:00', end: '08:50', class: 'Informatica' },
+            { start: '08:50', end: '09:40', class: 'Lingua Inglese' },
+            // ... add more classes for Monday
+        ],
+        2: [ // Tuesday
+            { start: '08:00', end: '08:50', class: 'Matematica' },
+            { start: '08:50', end: '09:40', class: 'Lettere' },
+            // ... add more classes for Tuesday
+        ],
+        // ... add schedules for other days
+    };
+
+    if (day === 0 || day === 6) return 'Weekend'; // No classes on weekends
+
+    const daySchedule = schedule[day];
+    if (!daySchedule) return 'No classes today';
+
+    const currentTime = hours * 60 + minutes;
+
+    for (const period of daySchedule) {
+        const [startHour, startMinute] = period.start.split(':').map(Number);
+        const [endHour, endMinute] = period.end.split(':').map(Number);
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+
+        if (currentTime >= startTime && currentTime < endTime) {
+            return `${period.class} (${period.start} - ${period.end})`;
+        }
+    }
+
+    return 'No class at this time';
+}
+
+// Update the updateCurrentClass function to include future class
+function updateCurrentClass() {
+    const now = new Date();
+    const day = now.getDay(); // 0 (Sunday) to 6 (Saturday)
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    const currentClass = getCurrentClass(day, hours, minutes);
+    const futureClass = getFutureClass(day, hours, minutes);
+
+    const currentClassElement = document.getElementById('current-class');
+    const currentTimeElement = document.getElementById('current-time');
+    const futureClassElement = document.getElementById('future-class');
+    const futureTimeElement = document.getElementById('future-time');
+
+    currentClassElement.textContent = currentClass || 'No class at this time';
+    currentTimeElement.textContent = `Current Time: ${formatTime(hours, minutes)}`;
+
+    futureClassElement.textContent = futureClass || 'No class in the next hour';
+    const futureTime = new Date(now.getTime() + 60 * 60 * 1000);
+    futureTimeElement.textContent = `At: ${formatTime(futureTime.getHours(), futureTime.getMinutes())}`;
+}
     </script>
 </body>
 </html>
