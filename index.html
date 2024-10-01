@@ -927,157 +927,355 @@ function updateCurrentClass() {
     const futureTime = new Date(now.getTime() + 60 * 60 * 1000);
     futureTimeElement.textContent = `At: ${formatTime(futureTime.getHours(), futureTime.getMinutes())}`;
 }
+// Firebase configuration and initialization
 const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        firebase.initializeApp(firebaseConfig);
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    databaseURL: "YOUR_DATABASE_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
 
-        // ... (Keep existing JavaScript code) ...
+// Timetable data
+const subjects = [
+    { id: 'informatica', name: 'Informatica', color: 'informatica' },
+    { id: 'lingua-inglese', name: 'Lingua Inglese', color: 'lingua-inglese' },
+    { id: 'gestione-progetto', name: 'Gestione Progetto', color: 'gestione-progetto' },
+    { id: 'lettere', name: 'Lettere', color: 'lettere' },
+    { id: 'tp-informatici', name: 'TP informatici', color: 'tp-informatici' },
+    { id: 'matematica', name: 'Matematica', color: 'matematica' },
+    { id: 'sistemi-reti', name: 'Sistemi e reti', color: 'sistemi-reti' },
+    { id: 'scienze-motorie', name: 'Scienze motorie', color: 'scienze-motorie' },
+    { id: 'educazione-civica', name: 'Educazione civica', color: 'educazione-civica' },
+    { id: 'religione', name: 'Religione', color: 'religione' },
+];
 
-        // Update saveTimetable function
-        function saveTimetable() {
-            const timetableData = [];
-            const timeslots = document.querySelectorAll('.timeslot');
-            timeslots.forEach((timeslot, index) => {
-                const subjectDiv = timeslot.querySelector('.timeslot-subject');
-                const classroomDiv = timeslot.querySelector('.timeslot-classroom');
-                timetableData.push({
-                    index: index,
-                    subject: subjectDiv.textContent,
-                    classroom: classroomDiv.textContent,
-                    color: timeslot.className.split(' ')[1]
-                });
+const classrooms = {
+    '100s': ['101', '102', '103', '104', '105', '106', '107', '108', '109', '110', '111', '112', '113', '114', '115'],
+    '200s': ['201', '202', '203', '204', '205', '206', '207', '208', '209', '210'],
+    '300s': ['301', '302', '303', '304'],
+    'other': ['Geo', 'Info1', 'Info2', 'Info3', 'Info4', 'Info5', 'Comp', 'Palestra Principale', 'Palestra Ungaretti', 'FabLab']
+};
+
+const days = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
+const times = [
+    '8:00-8:50', '8:50-9:40', 'Intervallo (10 min)',
+    '9:50-10:40', '10:40-11:30', 'Intervallo (7 min)',
+    '11:37-12:27', '12:27-13:17', 'Pranzo',
+    '14:12-15:06', '15:06-16:00'
+];
+
+// Create timetable structure
+function createTimetable() {
+    const table = document.getElementById('timetable');
+    const headerRow = table.insertRow();
+    headerRow.insertCell();
+    days.forEach(day => {
+        const th = document.createElement('th');
+        th.textContent = day;
+        headerRow.appendChild(th);
+    });
+
+    times.forEach(time => {
+        const row = table.insertRow();
+        const timeCell = row.insertCell();
+        timeCell.textContent = time;
+        
+        if (time.includes('Intervallo') || time === 'Pranzo') {
+            days.forEach(() => {
+                const cell = row.insertCell();
+                cell.classList.add('interval');
+                cell.textContent = time.includes('Intervallo') ? 'Intervallo' : 'Pranzo';
             });
-            
-            // Save to local storage
-            localStorage.setItem('timetableData', JSON.stringify(timetableData));
-
-            // Save to Firebase
-            firebase.database().ref('timetables/default').set(timetableData);
-        }
-
-        // Update loadTimetable function
-        function loadTimetable() {
-            // Try to load from Firebase first
-            firebase.database().ref('timetables/default').once('value').then((snapshot) => {
-                const firebaseData = snapshot.val();
-                if (firebaseData) {
-                    applyTimetableData(firebaseData);
-                } else {
-                    // If no Firebase data, try local storage
-                    const localData = localStorage.getItem('timetableData');
-                    if (localData) {
-                        applyTimetableData(JSON.parse(localData));
-                    }
-                }
-            }).catch((error) => {
-                console.error("Error loading from Firebase:", error);
-                // If Firebase fails, try local storage
-                const localData = localStorage.getItem('timetableData');
-                if (localData) {
-                    applyTimetableData(JSON.parse(localData));
-                }
+        } else {
+            days.forEach(() => {
+                const cell = row.insertCell();
+                cell.classList.add('timeslot');
+                cell.setAttribute('droppable', 'true');
+                const contentDiv = document.createElement('div');
+                contentDiv.classList.add('timeslot-content');
+                const subjectDiv = document.createElement('div');
+                subjectDiv.classList.add('timeslot-subject');
+                const classroomDiv = document.createElement('div');
+                classroomDiv.classList.add('timeslot-classroom');
+                contentDiv.appendChild(subjectDiv);
+                contentDiv.appendChild(classroomDiv);
+                cell.appendChild(contentDiv);
+                setupDropZone(cell);
             });
         }
+    });
+}
 
-        function applyTimetableData(timetableData) {
-            const timeslots = document.querySelectorAll('.timeslot');
-            timetableData.forEach(data => {
-                const timeslot = timeslots[data.index];
-                const contentDiv = timeslot.querySelector('.timeslot-content');
-                const subjectDiv = contentDiv.querySelector('.timeslot-subject');
-                const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
-                subjectDiv.textContent = data.subject;
-                classroomDiv.textContent = data.classroom;
-                timeslot.className = 'timeslot ' + data.color;
-            });
+// Create draggable elements
+function createDraggables(items, containerId, itemClass) {
+    const container = document.getElementById(containerId);
+    items.forEach(item => {
+        const element = document.createElement('div');
+        element.textContent = typeof item === 'object' ? item.name : item;
+        element.classList.add(itemClass, typeof item === 'object' ? item.color : 'classroom');
+        element.setAttribute('draggable', 'true');
+        element.id = typeof item === 'object' ? item.id : item;
+        setupDraggable(element);
+        setupMobileDraggable(element);
+        container.appendChild(element);
+    });
+}
+
+// Set up draggable functionality
+function setupDraggable(element) {
+    element.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', element.id);
+        e.dataTransfer.setData('itemType', element.classList.contains('subject') ? 'subject' : 'classroom');
+    });
+}
+
+// Set up drop zone functionality
+function setupDropZone(element) {
+    element.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        element.classList.add('dragover');
+    });
+
+    element.addEventListener('dragleave', () => {
+        element.classList.remove('dragover');
+    });
+
+    element.addEventListener('drop', (e) => {
+        e.preventDefault();
+        element.classList.remove('dragover');
+        handleDrop(element, e.dataTransfer.getData('text'), e.dataTransfer.getData('itemType'));
+    });
+}
+
+// Handle drop event
+function handleDrop(element, id, itemType) {
+    const contentDiv = element.querySelector('.timeslot-content');
+    const subjectDiv = contentDiv.querySelector('.timeslot-subject');
+    const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
+
+    if (itemType === 'subject') {
+        const subject = subjects.find(s => s.id === id);
+        if (subject) {
+            subjectDiv.textContent = subject.name;
+            element.className = 'timeslot ' + subject.color;
         }
+    } else if (itemType === 'classroom') {
+        classroomDiv.textContent = id;
+    }
 
-        // Update clearTimetable function
-        function clearTimetable() {
-            const timeslots = document.querySelectorAll('.timeslot');
-            timeslots.forEach(timeslot => {
-                const contentDiv = timeslot.querySelector('.timeslot-content');
-                const subjectDiv = contentDiv.querySelector('.timeslot-subject');
-                const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
-                subjectDiv.textContent = '';
-                classroomDiv.textContent = '';
-                timeslot.className = 'timeslot';
-            });
-            localStorage.removeItem('timetableData');
-            firebase.database().ref('timetables/default').remove();
-        }
+    saveTimetable();
+}
 
-        // Improve mobile touch handling
-        function setupMobileDraggable(element) {
-            let isDragging = false;
-            let startX, startY;
-
-            element.addEventListener('touchstart', function(e) {
-                isDragging = true;
-                startX = e.touches[0].clientX - element.offsetLeft;
-                startY = e.touches[0].clientY - element.offsetTop;
-                e.preventDefault();
-            }, false);
-
-            element.addEventListener('touchmove', function(e) {
-                if (isDragging) {
-                    e.preventDefault();
-                    let touchX = e.touches[0].clientX - startX;
-                    let touchY = e.touches[0].clientY - startY;
-                    element.style.position = 'fixed';
-                    element.style.left = touchX + 'px';
-                    element.style.top = touchY + 'px';
-                }
-            }, false);
-
-            element.addEventListener('touchend', function(e) {
-                isDragging = false;
-                element.style.position = 'static';
-                const touch = e.changedTouches[0];
-                const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                if (target && target.classList.contains('timeslot')) {
-                    const contentDiv = target.querySelector('.timeslot-content');
-                    const subjectDiv = contentDiv.querySelector('.timeslot-subject');
-                    const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
-
-                    if (element.classList.contains('subject')) {
-                        const subject = subjects.find(s => s.id === element.id);
-                        if (subject) {
-                            subjectDiv.textContent = subject.name;
-                            target.className = 'timeslot ' + subject.color;
-                        }
-                    } else if (element.classList.contains('classroom')) {
-                        classroomDiv.textContent = element.id;
-                    }
-
-                    saveTimetable();
-                }
-            }, false);
-        }
-
-        // Call these functions to set up the timetable
-        createTimetable();
-        createDraggables(subjects, 'subjects', 'subject');
-        createDraggables(classrooms['100s'], '100s', 'classroom');
-        createDraggables(classrooms['200s'], '200s', 'classroom');
-        createDraggables(classrooms['300s'], '300s', 'classroom');
-        createDraggables(classrooms['other'], 'other-rooms', 'classroom');
-        loadTimetable();
-        updateCurrentClass();
-        setInterval(updateCurrentClass, 60000);
-
-        // Set up event listeners
-        document.getElementById('saveButton').addEventListener('click', saveTimetable);
-        document.getElementById('clearButton').addEventListener('click', clearTimetable);
+// Save timetable data
+function saveTimetable() {
+    const timetableData = [];
+    const timeslots = document.querySelectorAll('.timeslot');
+    timeslots.forEach((timeslot, index) => {
+        const subjectDiv = timeslot.querySelector('.timeslot-subject');
+        const classroomDiv = timeslot.querySelector('.timeslot-classroom');
+        timetableData.push({
+            index: index,
+            subject: subjectDiv.textContent,
+            classroom: classroomDiv.textContent,
+            color: timeslot.className.split(' ')[1]
+        });
+    });
     
+    localStorage.setItem('timetableData', JSON.stringify(timetableData));
+    firebase.database().ref('timetables/default').set(timetableData);
+}
+
+// Load timetable data
+function loadTimetable() {
+    firebase.database().ref('timetables/default').once('value').then((snapshot) => {
+        const firebaseData = snapshot.val();
+        if (firebaseData) {
+            applyTimetableData(firebaseData);
+        } else {
+            const localData = localStorage.getItem('timetableData');
+            if (localData) {
+                applyTimetableData(JSON.parse(localData));
+            }
+        }
+    }).catch((error) => {
+        console.error("Error loading from Firebase:", error);
+        const localData = localStorage.getItem('timetableData');
+        if (localData) {
+            applyTimetableData(JSON.parse(localData));
+        }
+    });
+}
+
+// Apply timetable data to the UI
+function applyTimetableData(timetableData) {
+    const timeslots = document.querySelectorAll('.timeslot');
+    timetableData.forEach(data => {
+        const timeslot = timeslots[data.index];
+        const contentDiv = timeslot.querySelector('.timeslot-content');
+        const subjectDiv = contentDiv.querySelector('.timeslot-subject');
+        const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
+        subjectDiv.textContent = data.subject;
+        classroomDiv.textContent = data.classroom;
+        timeslot.className = 'timeslot ' + data.color;
+    });
+}
+
+// Clear timetable data
+function clearTimetable() {
+    const timeslots = document.querySelectorAll('.timeslot');
+    timeslots.forEach(timeslot => {
+        const contentDiv = timeslot.querySelector('.timeslot-content');
+        const subjectDiv = contentDiv.querySelector('.timeslot-subject');
+        const classroomDiv = contentDiv.querySelector('.timeslot-classroom');
+        subjectDiv.textContent = '';
+        classroomDiv.textContent = '';
+        timeslot.className = 'timeslot';
+    });
+    localStorage.removeItem('timetableData');
+    firebase.database().ref('timetables/default').remove();
+}
+
+// Set up mobile touch functionality
+function setupMobileDraggable(element) {
+    let isDragging = false;
+    let startX, startY;
+
+    element.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        startX = e.touches[0].clientX - element.offsetLeft;
+        startY = e.touches[0].clientY - element.offsetTop;
+        e.preventDefault();
+    }, { passive: false });
+
+    element.addEventListener('touchmove', function(e) {
+        if (isDragging) {
+            e.preventDefault();
+            let touchX = e.touches[0].clientX - startX;
+            let touchY = e.touches[0].clientY - startY;
+            element.style.position = 'fixed';
+            element.style.left = touchX + 'px';
+            element.style.top = touchY + 'px';
+        }
+    }, { passive: false });
+
+    element.addEventListener('touchend', function(e) {
+        if (isDragging) {
+            isDragging = false;
+            element.style.position = 'static';
+            const touch = e.changedTouches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            if (target && target.classList.contains('timeslot')) {
+                handleDrop(target, element.id, element.classList.contains('subject') ? 'subject' : 'classroom');
+            }
+        }
+    }, { passive: false });
+}
+
+// Update current and future class information
+function updateCurrentClass() {
+    const now = new Date();
+    const day = now.getDay();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+
+    const currentClass = getClassAtTime(day, hours, minutes);
+    const futureClass = getClassAtTime(day, (hours + 1) % 24, minutes);
+
+    document.getElementById('current-class').textContent = currentClass || 'No class at this time';
+    document.getElementById('current-time').textContent = `Current Time: ${formatTime(hours, minutes)}`;
+
+    document.getElementById('future-class').textContent = futureClass || 'No class in the next hour';
+    const futureTime = new Date(now.getTime() + 60 * 60 * 1000);
+    document.getElementById('future-time').textContent = `At: ${formatTime(futureTime.getHours(), futureTime.getMinutes())}`;
+}
+
+// Get class information for a specific time
+function getClassAtTime(day, hours, minutes) {
+    const schedule = {
+        1: [ // Monday
+            { start: '08:00', end: '08:50', class: 'Informatica' },
+            { start: '08:50', end: '09:40', class: 'Lingua Inglese' },
+            // Add more classes for Monday
+        ],
+        2: [ // Tuesday
+            { start: '08:00', end: '08:50', class: 'Matematica' },
+            { start: '08:50', end: '09:40', class: 'Lettere' },
+            // Add more classes for Tuesday
+        ],
+        // Add schedules for other days (3, 4, 5)
+    };
+
+    if (day === 0 || day === 6) return 'Weekend';
+    const daySchedule = schedule[day];
+    if (!daySchedule) return 'No classes today';
+
+    const currentTime = hours * 60 + minutes;
+    for (const period of daySchedule) {
+        const [startHour, startMinute] = period.start.split(':').map(Number);
+        const [endHour, endMinute] = period.end.split(':').map(Number);
+        const startTime = startHour * 60 + startMinute;
+        const endTime = endHour * 60 + endMinute;
+
+        if (currentTime >= startTime && currentTime < endTime) {
+            return `${period.class} (${period.start} - ${period.end})`;
+        }
+    }
+
+    return 'No class at this time';
+}
+
+// Format time as HH:MM
+function formatTime(hours, minutes) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+// Search functionality
+function setupSearch() {
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const allClasses = document.querySelectorAll('.subject, .classroom');
+        
+        allClasses.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                item.style.display = 'inline-block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Color palette functionality
+function setupColorPalette() {
+    const colorPalette = document.getElementById('color-palette');
+    const paletteOptions = colorPalette.querySelectorAll('.palette-option');
+
+    paletteOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const palette = this.getAttribute('data-palette');
+            document.body.className = palette;
+            
+            paletteOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+
+            updateTimetableColors();
+        });
+    });
+}
+
+function updateTimetableColors() {
+    const timeslots = document.querySelectorAll('.timeslot');
+    timeslots.forEach(timeslot => {
+        const subjectElement = timeslot.querySelector('.timeslot-subject');
+        if (subjectElement) {
+            const subject = subjectElement.textContent.toLowerCase().replace(/\
     </script>
 </body>
 </html>
